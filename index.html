@@ -206,6 +206,25 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 
 .sec-label{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:7px;display:flex;align-items:center;gap:6px}
 .sec-label::after{content:'';flex:1;height:1px;background:var(--b1)}
+
+.anchor-nav{display:flex;gap:6px;padding:8px 10px;border-bottom:1px solid var(--b1);flex-wrap:nowrap;overflow-x:auto;flex-shrink:0;background:var(--s1)}
+.anchor-nav::-webkit-scrollbar{display:none}
+.anc{flex-shrink:0;font-size:8px;letter-spacing:.5px;color:var(--dim);background:var(--s2);border:1px solid var(--b1);border-radius:3px;padding:4px 8px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.anc:active,.anc:hover{color:var(--cyan);border-color:var(--b2)}
+
+.collapsible{margin-bottom:8px;border:1px solid var(--b1);border-radius:8px;overflow:hidden;background:var(--s2);transition:border-color .2s}
+.collapsible.open{border-color:var(--b2)}
+.collapsible-header{display:flex;align-items:center;gap:10px;padding:12px;cursor:pointer;transition:background .15s;user-select:none;-webkit-user-select:none}
+.collapsible-header:active{background:var(--s3)}
+.ch-icon{font-size:24px;flex-shrink:0}
+.ch-info{flex:1;min-width:0}
+.ch-name{font-size:11px;font-weight:700;color:var(--txt)}
+.ch-desc{font-size:8px;color:var(--dim);margin-top:2px}
+.ch-toggle{font-size:16px;color:var(--dim);transition:transform .25s;flex-shrink:0}
+.collapsible.open .ch-toggle{transform:rotate(90deg);color:var(--cyan)}
+.collapsible-body{max-height:0;overflow:hidden;transition:max-height .35s ease}
+.collapsible.open .collapsible-body{max-height:2000px}
+.collapsible-inner{padding:0 12px 12px}
 </style>
 </head>
 <body>
@@ -711,39 +730,32 @@ const CATEGORIES = {
   ]
 };
 
-// ── DRILL-DOWN STATE ──
-let drillState = { subs: null, sport: null, food: null };
+// ── SECTION STATE ──
+const openSections = { subs:{}, sport:{}, food:{} };
 let currentSub = null, currentDose = 1, savedScroll = 0;
 
 // ── RENDER TABS ──
-function renderTab(tabId) {
-  if(tabId === 'subs') renderDrillTab('subs', CATEGORIES.subs, 'subs-root');
-  else if(tabId === 'sport') renderDrillTab('sport', CATEGORIES.sport_cats, 'sport-root');
-  else if(tabId === 'food') renderDrillTab('food', CATEGORIES.food_cats, 'food-root');
-}
-
-function renderDrillTab(tabId, cats, rootId) {
+function renderSections(tabId) {
+  const cats = tabId==='subs' ? CATEGORIES.subs : tabId==='sport' ? CATEGORIES.sport_cats : CATEGORIES.food_cats;
+  const rootId = tabId+'-root';
   const root = document.getElementById(rootId);
-  const state = drillState[tabId];
+  if(!root) return;
 
-  if(!state) {
-    let html = '';
-    cats.forEach(cat => {
-      html += `<div class="cat-card ${cat.type}" onclick="drillInto('${tabId}','${cat.id}')">
-        <span class="cat-icon">${cat.icon}</span>
-        <span class="cat-name">${cat.name}</span>
-        <span class="cat-desc">${cat.desc}</span>
-      </div>`;
-    });
-    root.innerHTML = `<div class="cat-grid">${html}</div>`;
-  } else {
-    const cat = cats.find(c => c.id === state);
-    if(!cat) return;
-    let html = `<div class="drill-header">
-      <button class="back-btn" onclick="drillBack('${tabId}')">← Назад</button>
-      <div class="drill-title">${cat.icon} ${cat.name}</div>
-    </div>
-    <div class="sub-list">`;
+  let html = '<div class="anchor-nav">';
+  cats.forEach(cat => {
+    html += `<div class="anc" onclick="scrollToSection('${tabId}','${cat.id}')">${cat.icon} ${cat.name}</div>`;
+  });
+  html += '</div>';
+
+  cats.forEach(cat => {
+    const isOpen = openSections[tabId][cat.id];
+    html += `<div class="collapsible${isOpen?' open':''}" id="sec-${cat.id}">
+      <div class="collapsible-header" onclick="toggleSection('${tabId}','${cat.id}')">
+        <span class="ch-icon">${cat.icon}</span>
+        <div class="ch-info"><div class="ch-name">${cat.name}</div><div class="ch-desc">${cat.desc}</div></div>
+        <span class="ch-toggle">›</span>
+      </div>
+      <div class="collapsible-body"><div class="collapsible-inner"><div class="sub-list">`;
     cat.items.forEach(item => {
       const tagHtml = (item.tags||[]).map(t=>`<span class="si-tag ${t.c}">${t.t}</span>`).join('');
       html += `<div class="sub-item ${item.type}" onclick="openDose('${item.id}','${tabId}','${cat.id}')">
@@ -756,23 +768,26 @@ function renderDrillTab(tabId, cats, rootId) {
         <div class="si-arrow">›</div>
       </div>`;
     });
-    html += '</div>';
-    root.innerHTML = html;
+    html += '</div></div></div></div>';
+  });
+
+  root.innerHTML = html;
+}
+
+function toggleSection(tabId, catId) {
+  const el = document.getElementById('sec-'+catId);
+  if(!el) return;
+  openSections[tabId][catId] = !openSections[tabId][catId];
+  el.classList.toggle('open');
+}
+
+function scrollToSection(tabId, catId) {
+  openSections[tabId][catId] = true;
+  const el = document.getElementById('sec-'+catId);
+  if(el) {
+    el.classList.add('open');
+    setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'start'}),50);
   }
-}
-
-function drillInto(tabId, catId) {
-  const activeTab = document.querySelector('.tab-content.active');
-  if(activeTab) savedScroll = activeTab.scrollTop;
-  drillState[tabId] = catId;
-  renderTab(tabId);
-  const activeTabEl = document.querySelector('.tab-content.active');
-  if(activeTabEl) activeTabEl.scrollTop = 0;
-}
-
-function drillBack(tabId) {
-  drillState[tabId] = null;
-  renderTab(tabId);
 }
 
 // ── DOSE MODAL ──
@@ -995,7 +1010,7 @@ function switchTab(id, btn) {
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+id).classList.add('active');
   btn.classList.add('active');
-  renderTab(id);
+  if(id!=='organs'&&id!=='ai') renderSections(id);
 }
 
 function setTOD(btn, tod) {
@@ -1040,9 +1055,9 @@ function toast(msg) {
 document.getElementById('dose-modal').addEventListener('click',function(e){if(e.target===this)closeDose();});
 
 // INIT
-renderTab('subs');
-renderTab('sport');
-renderTab('food');
+renderSections('subs');
+renderSections('sport');
+renderSections('food');
 render();
 </script>
 </body>

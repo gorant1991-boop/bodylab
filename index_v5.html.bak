@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BodyLab v5 · пульт управления</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Unbounded:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#03080d;--s1:#080f18;--s2:#0c1824;--s3:#112030;
+  --b1:#0f2a40;--b2:#1a3d5c;--b3:#2a5a80;
+  --cyan:#00e5ff;--red:#ff3347;--green:#00e676;--yellow:#ffab00;--purple:#e040fb;--orange:#ff6d00;
+  --txt:#b8dff0;--dim:#3a6a8a;--dim2:#1a3040;
+  --heart-c:#ff3347;--lung-c:#ff8fa3;--liver-c:#bf8040;--kidney-c:#e53935;
+  --brain-c:#ce93d8;--stomach-c:#ffb300;--gut-c:#66bb6a;--vessel-c:#c62828;
+  --pancreas-c:#26c6da;--skin-c:#ffcc80;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'JetBrains Mono',monospace;font-size:13px;overflow:hidden}
+body{display:flex;flex-direction:column}
+
+/* HEADER */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--b1);background:linear-gradient(180deg,rgba(0,229,255,.05),transparent);flex-shrink:0}
+.logo{font-family:'Unbounded',sans-serif;font-weight:900;font-size:20px;color:var(--cyan);text-shadow:0 0 24px rgba(0,229,255,.5);letter-spacing:-1px}
+.logo sup{font-size:10px;color:var(--dim);font-weight:400}
+.hdr-c{display:flex;gap:14px;align-items:center}
+.hdr-stats{display:flex;gap:7px}
+.hs{background:var(--s2);border:1px solid var(--b1);border-radius:5px;padding:5px 11px;text-align:center;min-width:60px}
+.hs-l{font-size:8px;color:var(--dim);letter-spacing:.5px;text-transform:uppercase}
+.hs-v{font-size:16px;font-weight:700;line-height:1.2}
+.tod-bar{display:flex;gap:3px}
+.tod-btn{padding:6px 9px;font-family:'JetBrains Mono',monospace;font-size:9px;background:var(--s2);border:1px solid var(--b1);color:var(--dim);cursor:pointer;border-radius:4px;transition:all .2s}
+.tod-btn.active{color:var(--cyan);border-color:var(--cyan);background:rgba(0,229,255,.06)}
+
+/* MAIN GRID */
+.grid{flex:1;display:grid;grid-template-columns:230px 1fr 1fr;gap:10px;padding:10px 14px;overflow:hidden;min-height:0}
+.col{display:flex;flex-direction:column;gap:10px;overflow:hidden;min-height:0}
+.panel{background:var(--s1);border:1px solid var(--b1);border-radius:9px;padding:11px;overflow-y:auto}
+.panel.flex{flex:1}
+.p-lbl{font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin-bottom:9px;display:flex;align-items:center;gap:6px}
+.p-lbl::after{content:'';flex:1;height:1px;background:var(--b1)}
+.p-lbl.warn{color:var(--red)}
+.p-lbl.warn::after{background:rgba(255,51,71,.2)}
+
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+
+/* BODY */
+.body-panel{display:flex;flex-direction:column;align-items:center}
+.body-svg{width:100%;max-width:200px}
+.organ{cursor:pointer;transition:filter .3s}
+.organ:hover{filter:brightness(1.6)}
+.o-heart{animation:hb .9s ease-in-out infinite;transform-origin:center}
+.o-lungs{animation:br 3.5s ease-in-out infinite;transform-origin:center}
+@keyframes hb{0%,100%{transform:scale(1)}15%{transform:scale(1.1)}30%{transform:scale(1)}45%{transform:scale(1.05)}60%{transform:scale(1)}}
+@keyframes br{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+.organ.hit{animation:oh .5s ease!important}
+@keyframes oh{0%{filter:brightness(1)}40%{filter:brightness(4) drop-shadow(0 0 12px currentColor)}100%{filter:brightness(1)}}
+.organ.damaged{animation:od 1.4s infinite!important}
+@keyframes od{0%,100%{opacity:1}50%{opacity:.3;filter:brightness(3) drop-shadow(0 0 10px var(--red))}}
+
+.organ-list{display:flex;flex-direction:column;gap:6px}
+.ol-row{display:flex;align-items:center;gap:7px;cursor:pointer}
+.ol-name{font-size:9px;color:var(--dim);width:62px;flex-shrink:0}
+.ol-bar{flex:1;height:7px;background:var(--s3);border-radius:3px;overflow:hidden;position:relative}
+.ol-fill{height:100%;border-radius:3px;transition:width .8s,background .8s}
+.ol-perm{position:absolute;top:0;right:0;height:100%;background:repeating-linear-gradient(45deg,rgba(255,51,71,.4),rgba(255,51,71,.4) 2px,transparent 2px,transparent 4px)}
+.ol-pct{font-size:10px;font-weight:700;width:32px;text-align:right;flex-shrink:0}
+
+/* VITALS */
+.vit-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.vc{background:var(--s2);border:1px solid var(--b1);border-radius:5px;padding:6px 7px;position:relative;overflow:hidden}
+.vc::after{content:'';position:absolute;bottom:0;left:0;height:2px;width:var(--w,50%);background:var(--c,var(--cyan));transition:width .8s,background .5s}
+.vn{font-size:8px;color:var(--dim);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vv{font-size:16px;font-weight:700;color:var(--c,var(--cyan));line-height:1.15;white-space:nowrap}
+.vu{font-size:7px;color:var(--dim)}
+
+/* SYSTEMS */
+.sys-list{display:flex;flex-direction:column;gap:7px}
+.sys-row{display:flex;align-items:center;gap:7px}
+.sys-name{font-size:9px;color:var(--dim);width:74px;flex-shrink:0}
+.sys-bar{flex:1;height:6px;background:var(--s3);border-radius:3px;overflow:hidden}
+.sys-fill{height:100%;border-radius:3px;transition:width .8s,background .8s}
+.sys-pct{font-size:9px;font-weight:700;width:30px;text-align:right;flex-shrink:0}
+
+/* CONDITIONS */
+.cond-card{background:var(--s2);border-left:2px solid var(--orange);border-radius:0 5px 5px 0;padding:7px 9px;margin-bottom:6px}
+.cond-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.cond-n{font-size:11px;color:var(--txt);font-weight:700;white-space:nowrap}
+.cond-s{font-size:9px;white-space:nowrap;text-align:right;flex-shrink:0}
+.cond-prog{font-size:8px;color:var(--dim);margin-top:3px}
+.cond-empty{font-size:9px;color:var(--dim);text-align:center;padding:14px 0}
+
+/* FORECAST (Phase 2 placeholder) */
+.fc-years{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:8px}
+.fc-y{background:var(--s2);border:1px solid var(--b1);border-radius:5px;padding:6px;text-align:center;cursor:pointer;transition:border-color .2s}
+.fc-y:hover{border-color:var(--b3)}
+.fc-y.sel{border-color:var(--cyan);background:rgba(0,229,255,.05)}
+.fc-y-n{font-family:'Unbounded',sans-serif;font-size:13px;font-weight:700;color:var(--cyan)}
+.fc-y-r{font-size:9px;margin-top:2px;font-weight:700}
+.fc-d-lbl{font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px}
+.fc-row{display:flex;justify-content:space-between;font-size:10px;margin-bottom:4px}
+.fc-stub{font-size:9px;color:var(--dim);text-align:center;padding:12px 6px;line-height:1.7;border:1px dashed var(--b1);border-radius:6px}
+
+/* TABS (bottom action area) */
+.tabs-area{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.tabs{display:flex;gap:3px;flex-shrink:0;margin-bottom:9px}
+.tab{padding:7px 13px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.5px;text-transform:uppercase;background:var(--s2);border:1px solid var(--b1);color:var(--dim);cursor:pointer;border-radius:5px;transition:all .2s}
+.tab.active{color:var(--cyan);border-color:var(--cyan);background:rgba(0,229,255,.05)}
+.tab.ai.active{color:var(--purple);border-color:var(--purple)}
+.tab-body{flex:1;overflow-y:auto;min-height:0}
+
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.cat-card{background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:12px 10px;cursor:pointer;transition:all .2s;text-align:center}
+.cat-card:hover{transform:translateY(-2px);border-color:var(--b3)}
+.cat-icon{font-size:26px;display:block;margin-bottom:5px}
+.cat-name{font-size:10px;color:var(--txt);font-weight:700;display:block;margin-bottom:2px}
+.cat-desc{font-size:8px;color:var(--dim);line-height:1.4}
+
+.drill-header{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.back-btn{background:var(--s2);border:1px solid var(--b2);border-radius:5px;padding:5px 11px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--cyan);cursor:pointer}
+.drill-title{font-family:'Unbounded',sans-serif;font-size:13px;color:var(--txt)}
+.sub-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:7px}
+.sub-item{background:var(--s2);border:1px solid var(--b1);border-radius:7px;padding:10px 12px;cursor:pointer;transition:all .2s;display:flex;align-items:flex-start;gap:10px}
+.sub-item:hover{border-color:var(--b3)}
+.sub-item.harmful{border-left:2px solid var(--red)}
+.sub-item.good{border-left:2px solid var(--green)}
+.sub-item.neutral{border-left:2px solid var(--yellow)}
+.si-icon{font-size:22px;flex-shrink:0}
+.si-body{flex:1;min-width:0}
+.si-name{font-size:11px;font-weight:700;color:var(--txt);margin-bottom:2px}
+.si-mech{font-size:8px;color:var(--dim);line-height:1.4}
+.si-tags{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px}
+.si-tag{font-size:7px;padding:1px 5px;border-radius:3px;font-weight:700}
+.si-tag.organ{background:rgba(0,229,255,.1);color:var(--cyan)}
+.si-tag.bad{background:rgba(255,51,71,.15);color:var(--red)}
+.si-tag.good{background:rgba(0,230,118,.12);color:var(--green)}
+
+/* PROFILE */
+.prof-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.sl-row{margin-bottom:11px}
+.sl-label{display:flex;justify-content:space-between;font-size:9px;color:var(--dim);margin-bottom:4px}
+.sl-label span:last-child{color:var(--cyan)}
+input[type=range]{width:100%;-webkit-appearance:none;height:4px;background:var(--b2);border-radius:2px;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--cyan);cursor:pointer;box-shadow:0 0 8px var(--cyan)}
+.chip-row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:11px}
+.chip{padding:6px 11px;background:var(--s2);border:1px solid var(--b1);color:var(--dim);font-family:'JetBrains Mono',monospace;font-size:9px;cursor:pointer;border-radius:4px;transition:all .2s}
+.chip.active{border-color:var(--cyan);color:var(--cyan);background:rgba(0,229,255,.08)}
+.chip.cond.active{border-color:var(--red);color:var(--red);background:rgba(255,51,71,.08)}
+
+/* DOSE MODAL */
+.modal{position:fixed;inset:0;background:rgba(3,8,13,.85);z-index:500;display:none;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+.modal.open{display:flex}
+.sheet{background:var(--s2);border:1px solid var(--b2);border-radius:14px;width:420px;max-width:92vw;padding:20px;max-height:88vh;overflow-y:auto}
+.dm-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:12px}
+.dm-icon{font-size:32px}
+.dm-title{font-family:'Unbounded',sans-serif;font-size:16px;color:var(--cyan);margin-bottom:4px}
+.dm-mech{font-size:10px;color:var(--dim);line-height:1.5}
+.dm-section{font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin:14px 0 7px}
+.dose-row{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin-bottom:6px}
+.dose-row span:last-child{color:var(--txt);font-weight:700}
+.impact-box{background:var(--s3);border:1px solid var(--b2);border-radius:7px;padding:11px;margin-bottom:13px}
+.impact-row{display:flex;justify-content:space-between;margin-bottom:5px;font-size:11px}
+.impact-organ{color:var(--dim)}
+.impact-val{font-weight:700}
+.impact-warn{font-size:9px;margin-top:6px;padding:6px 8px;border-radius:5px}
+.impact-warn.red{background:rgba(255,51,71,.12);color:var(--red)}
+.impact-warn.yellow{background:rgba(255,171,0,.12);color:var(--yellow)}
+.btn-apply{width:100%;padding:14px;background:var(--cyan);color:var(--bg);font-family:'Unbounded',sans-serif;font-size:14px;font-weight:700;border:none;border-radius:8px;cursor:pointer}
+.btn-apply:active{transform:scale(.98)}
+.btn-cancel{width:100%;padding:11px;background:transparent;border:none;color:var(--dim);font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;margin-top:6px}
+
+.eff-item{display:flex;align-items:center;gap:9px;background:var(--s2);border:1px solid var(--b1);border-radius:5px;padding:8px 11px;margin-bottom:6px}
+.eff-item.harmful{border-left:3px solid var(--red)}
+.eff-item.good{border-left:3px solid var(--green)}
+.eff-item.neutral{border-left:3px solid var(--yellow)}
+.eff-icon{font-size:16px}
+.eff-info{flex:1;min-width:0}
+.eff-name{font-size:11px;font-weight:700}
+.eff-detail{font-size:8px;color:var(--dim);margin-top:1px}
+.eff-time{font-size:8px;color:var(--dim)}
+.empty-state{font-size:10px;color:var(--dim);text-align:center;padding:18px 0}
+
+.combo-warn{background:rgba(255,51,71,.07);border:1px solid rgba(255,51,71,.35);border-radius:6px;padding:10px;margin-bottom:7px}
+.combo-title{font-size:9px;color:var(--red);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px}
+.combo-text{font-size:9px;color:var(--txt);line-height:1.5}
+
+.ai-card{background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:13px}
+.ai-card-h{display:flex;align-items:center;gap:7px;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}
+.ai-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--cyan);animation:pdot 1.4s infinite}
+@keyframes pdot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+.ai-btn{width:100%;padding:9px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.3);color:var(--cyan);font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border-radius:5px;transition:all .2s}
+.ai-btn:hover{background:rgba(0,229,255,.16)}
+.ai-btn:active{transform:scale(.98)}
+.reset-btn{padding:8px 14px;background:transparent;border:1px solid var(--b1);color:var(--dim);font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border-radius:5px}
+.reset-btn:hover{border-color:var(--red);color:var(--red)}
+.adv-btn{padding:8px 14px;background:rgba(0,229,255,.08);border:1px solid var(--cyan);color:var(--cyan);font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border-radius:5px}
+
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(70px);background:var(--s3);border:1px solid var(--cyan);border-radius:6px;padding:8px 16px;font-size:11px;color:var(--cyan);z-index:600;transition:transform .25s;box-shadow:0 0 20px rgba(0,229,255,.15)}
+.toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="logo">BodyLab<sup>v5 · пульт</sup></div>
+  <div class="hdr-c">
+    <div class="tod-bar" id="tod-bar">
+      <button class="tod-btn" data-tod="night">🌙 Ночь</button>
+      <button class="tod-btn active" data-tod="morning">🌅 Утро</button>
+      <button class="tod-btn" data-tod="day">☀️ День</button>
+      <button class="tod-btn" data-tod="evening">🌆 Вечер</button>
+    </div>
+    <div class="hdr-stats">
+      <div class="hs"><div class="hs-l">здоровье</div><div class="hs-v" id="h-health">—</div></div>
+      <div class="hs"><div class="hs-l">биовозраст</div><div class="hs-v" id="h-bio">—</div></div>
+      <div class="hs"><div class="hs-l">риск</div><div class="hs-v" id="h-risk">—</div></div>
+      <div class="hs"><div class="hs-l">регион</div><div class="hs-v" id="h-loc" style="font-size:11px;margin-top:3px">—</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="grid">
+
+  <!-- LEFT: BODY + ORGANS -->
+  <div class="col">
+    <div class="panel body-panel">
+      <div class="p-lbl">анатомия · клик по органу</div>
+      <svg class="body-svg" viewBox="0 0 130 300" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="glo"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <!-- silhouette -->
+        <ellipse cx="65" cy="28" rx="23" ry="26" fill="none" stroke="var(--b2)" stroke-width="1.2"/>
+        <rect x="57" y="54" width="16" height="11" rx="3" fill="none" stroke="var(--b2)" stroke-width="1.2"/>
+        <path d="M37 66 Q26 72 24 124 Q22 168 30 212 L48 212 L50 258 L80 258 L82 212 L100 212 Q108 168 106 124 Q104 72 93 66Z" fill="none" stroke="var(--b2)" stroke-width="1.2"/>
+        <!-- skin (whole-body subtle outline) -->
+        <g class="organ" id="og-skin" data-organ="skin">
+          <path d="M37 66 Q26 72 24 124 Q22 168 30 212 L48 212 L50 258 L80 258 L82 212 L100 212 Q108 168 106 124 Q104 72 93 66Z" fill="var(--skin-c)" opacity=".04" stroke="var(--skin-c)" stroke-width=".7" stroke-dasharray="2,3"/>
+        </g>
+        <!-- vessels -->
+        <g class="organ" id="og-vessels" data-organ="vessels">
+          <path d="M65 100 Q65 130 60 170 Q56 184 50 200" stroke="var(--vessel-c)" stroke-width="1.3" fill="none" opacity=".4"/>
+          <path d="M65 100 Q65 130 70 170 Q74 184 80 200" stroke="var(--vessel-c)" stroke-width="1.3" fill="none" opacity=".4"/>
+          <path d="M65 100 Q65 70 65 58" stroke="var(--vessel-c)" stroke-width="1" fill="none" opacity=".35"/>
+        </g>
+        <!-- brain -->
+        <g class="organ" id="og-brain" data-organ="brain">
+          <ellipse cx="65" cy="27" rx="16" ry="18" fill="var(--brain-c)" opacity=".2" filter="url(#glo)"/>
+          <ellipse cx="65" cy="27" rx="16" ry="18" fill="none" stroke="var(--brain-c)" stroke-width="1.4" opacity=".8"/>
+          <path d="M53 22 Q60 16 66 22 Q72 28 78 22" stroke="var(--brain-c)" stroke-width="1" fill="none" opacity=".5"/>
+        </g>
+        <!-- lungs -->
+        <g class="organ o-lungs" id="og-lungs" data-organ="lungs">
+          <path d="M48 95 Q38 103 37 124 Q36 145 43 150 Q48 153 52 147 Q56 136 55 116Z" fill="var(--lung-c)" opacity=".18"/>
+          <path d="M48 95 Q38 103 37 124 Q36 145 43 150 Q48 153 52 147 Q56 136 55 116Z" fill="none" stroke="var(--lung-c)" stroke-width="1.3" opacity=".8"/>
+          <path d="M82 95 Q92 103 93 124 Q94 145 87 150 Q82 153 78 147 Q74 136 75 116Z" fill="var(--lung-c)" opacity=".18"/>
+          <path d="M82 95 Q92 103 93 124 Q94 145 87 150 Q82 153 78 147 Q74 136 75 116Z" fill="none" stroke="var(--lung-c)" stroke-width="1.3" opacity=".8"/>
+        </g>
+        <!-- heart -->
+        <g class="organ o-heart" id="og-heart" data-organ="heart">
+          <path d="M65 116 Q57 109 51 114 Q45 118 45 126 Q45 135 65 148 Q85 135 85 126 Q85 118 79 114 Q73 109 65 116Z" fill="var(--heart-c)" opacity=".3" filter="url(#glo)"/>
+          <path d="M65 116 Q57 109 51 114 Q45 118 45 126 Q45 135 65 148 Q85 135 85 126 Q85 118 79 114 Q73 109 65 116Z" fill="none" stroke="var(--heart-c)" stroke-width="1.8" opacity=".95"/>
+        </g>
+        <!-- liver -->
+        <g class="organ" id="og-liver" data-organ="liver">
+          <path d="M56 156 Q46 154 41 162 Q36 169 40 180 Q44 188 55 189 Q68 190 73 182 Q77 174 74 160Z" fill="var(--liver-c)" opacity=".3"/>
+          <path d="M56 156 Q46 154 41 162 Q36 169 40 180 Q44 188 55 189 Q68 190 73 182 Q77 174 74 160Z" fill="none" stroke="var(--liver-c)" stroke-width="1.3" opacity=".85"/>
+        </g>
+        <!-- pancreas -->
+        <g class="organ" id="og-pancreas" data-organ="pancreas">
+          <ellipse cx="76" cy="174" rx="13" ry="6" fill="var(--pancreas-c)" opacity=".35" transform="rotate(-18 76 174)"/>
+          <ellipse cx="76" cy="174" rx="13" ry="6" fill="none" stroke="var(--pancreas-c)" stroke-width="1.4" transform="rotate(-18 76 174)"/>
+        </g>
+        <!-- stomach -->
+        <g class="organ" id="og-stomach" data-organ="stomach">
+          <path d="M72 158 Q82 156 87 166 Q91 175 87 185 Q81 192 71 190 Q64 187 66 176 Q67 166 72 158Z" fill="var(--stomach-c)" opacity=".2"/>
+          <path d="M72 158 Q82 156 87 166 Q91 175 87 185 Q81 192 71 190 Q64 187 66 176 Q67 166 72 158Z" fill="none" stroke="var(--stomach-c)" stroke-width="1.3" opacity=".75"/>
+        </g>
+        <!-- kidneys -->
+        <g class="organ" id="og-kidneys" data-organ="kidneys">
+          <ellipse cx="44" cy="194" rx="8" ry="10" fill="var(--kidney-c)" opacity=".22"/>
+          <ellipse cx="44" cy="194" rx="8" ry="10" fill="none" stroke="var(--kidney-c)" stroke-width="1.3" opacity=".75"/>
+          <ellipse cx="86" cy="194" rx="8" ry="10" fill="var(--kidney-c)" opacity=".22"/>
+          <ellipse cx="86" cy="194" rx="8" ry="10" fill="none" stroke="var(--kidney-c)" stroke-width="1.3" opacity=".75"/>
+        </g>
+        <!-- gut -->
+        <g class="organ" id="og-gut" data-organ="gut">
+          <path d="M47 188 Q65 184 83 188 Q87 199 83 208 Q65 212 47 208 Q43 199 47 188Z" fill="var(--gut-c)" opacity=".14"/>
+          <path d="M47 188 Q65 184 83 188 Q87 199 83 208 Q65 212 47 208 Q43 199 47 188Z" fill="none" stroke="var(--gut-c)" stroke-width="1" opacity=".5"/>
+        </g>
+      </svg>
+    </div>
+    <div class="panel flex">
+      <div class="p-lbl">органы · здоровье</div>
+      <div class="organ-list" id="organ-list"></div>
+    </div>
+  </div>
+
+  <!-- CENTER: VITALS + SYSTEMS + HISTORY -->
+  <div class="col">
+    <div class="panel">
+      <div class="p-lbl">витальные · реальное время</div>
+      <div class="vit-grid" id="vit-grid"></div>
+    </div>
+    <div class="panel">
+      <div class="p-lbl">системы</div>
+      <div class="sys-list" id="sys-list"></div>
+    </div>
+    <div class="panel flex">
+      <div class="p-lbl">журнал воздействий</div>
+      <div id="eff-list"><div class="empty-state">Нет активных воздействий</div></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: CONDITIONS + FORECAST + ACTIONS -->
+  <div class="col">
+    <div class="panel">
+      <div class="p-lbl warn">активные болезни · прогрессия</div>
+      <div id="cond-list"><div class="cond-empty">Хронических болезней нет</div></div>
+      <div id="combo-warnings" style="margin-top:8px"></div>
+    </div>
+    <div class="panel">
+      <div class="p-lbl">прогноз · 1000 судеб</div>
+      <div class="fc-years" id="fc-years"></div>
+      <div id="fc-detail"></div>
+    </div>
+    <div class="panel flex">
+      <div class="tabs-area">
+        <div class="tabs" id="tabs">
+          <button class="tab active" data-tab="subs">Вещества</button>
+          <button class="tab" data-tab="sport">Спорт</button>
+          <button class="tab" data-tab="food">Еда</button>
+          <button class="tab" data-tab="profile">Профиль</button>
+          <button class="tab ai" data-tab="ai">AI</button>
+        </div>
+        <div class="tab-body" id="tab-body"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- DOSE MODAL -->
+<div class="modal" id="modal">
+  <div class="sheet">
+    <div class="dm-top">
+      <div class="dm-icon" id="dm-icon">💊</div>
+      <div><div class="dm-title" id="dm-title">—</div><div class="dm-mech" id="dm-mech">—</div></div>
+    </div>
+    <div class="dm-section">Доза</div>
+    <div class="dose-row"><span id="dm-dose-lbl">Количество</span><span id="dm-dose-val">1</span></div>
+    <input type="range" id="dm-range" min="1" max="10" value="1" style="margin-bottom:13px">
+    <div class="impact-box">
+      <div class="dm-section" style="margin:0 0 7px">Ожидаемое воздействие</div>
+      <div id="dm-impact"></div>
+    </div>
+    <button class="btn-apply" id="btn-apply">Применить</button>
+    <button class="btn-cancel" id="btn-cancel">Отмена</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════
+// META: органы, системы, регионы, преднастройка
+// ════════════════════════════════════════════════
+const ORGANS = {
+  brain:    {name:'Мозг',         c:'var(--brain-c)'},
+  heart:    {name:'Сердце',       c:'var(--heart-c)'},
+  vessels:  {name:'Сосуды',       c:'var(--vessel-c)'},
+  lungs:    {name:'Лёгкие',       c:'var(--lung-c)'},
+  liver:    {name:'Печень',       c:'var(--liver-c)'},
+  pancreas: {name:'Поджелуд.',    c:'var(--pancreas-c)'},
+  stomach:  {name:'Желудок',      c:'var(--stomach-c)'},
+  kidneys:  {name:'Почки',        c:'var(--kidney-c)'},
+  gut:      {name:'Кишечник',     c:'var(--gut-c)'},
+  skin:     {name:'Кожа',         c:'var(--skin-c)'},
+};
+const SYSTEMS = {
+  immune:    {name:'Иммунитет'},
+  bones:     {name:'Кости'},
+  endocrine: {name:'Эндокринная'},
+  blood:     {name:'Кровь'},
+};
+// регион = набор факторов среды (интенсивность 0..2)
+const LOCATIONS = {
+  azure:      {name:'Лазурный берег ☀', factors:{uv:2, clean:1}},
+  south:      {name:'Юг России 🌻',      factors:{uv:1}},
+  mid:        {name:'Средняя полоса 🌳',  factors:{}},
+  megacity:   {name:'Мегаполис 🏙',       factors:{pollution:2, stressEnv:1}},
+  industrial: {name:'Промзона 🏭',        factors:{pollution:2}},
+  mountains:  {name:'Горы 🏔',            factors:{altitude:2, uv:1, clean:1}},
+  yamal:      {name:'Ямал ❄',            factors:{cold:2, polarNight:2}},
+};
+const FACTOR_LABELS = {
+  uv:'УФ↑ (кожа, меланома; вит D)', cold:'холод (сосуды, ССЗ)',
+  pollution:'смог (лёгкие, ХОБЛ)', altitude:'высота (O₂↓, адаптация сердца)',
+  polarNight:'полярная ночь (вит D↓ → кости, иммунитет, сосуды)',
+  stressEnv:'городской стресс (сердце)', clean:'чистый воздух (+лёгкие)',
+};
+// Преднастройка: хронические болезни сеют стартовое состояние
+const PRECONDITIONS = {
+  pancreatitis: {name:'Панкреатит',    seedOrgans:{pancreas:-40}, seedSystems:{endocrine:-15}},
+  hypertension: {name:'Гипертония',    seedOrgans:{vessels:-25, heart:-10}, seedVitals:{pulse:6}},
+  diabetes:     {name:'Диабет 2т',     seedOrgans:{pancreas:-30, vessels:-15, kidneys:-10}, seedSystems:{immune:-10}},
+  asthma:       {name:'Астма',         seedOrgans:{lungs:-25}},
+  liver_dis:    {name:'Болезнь печени',seedOrgans:{liver:-35}},
+};
+
+// ════════════════════════════════════════════════
+// STATE — орган = {base, rev, perm}; cur = base - rev - perm
+// ════════════════════════════════════════════════
+let S = null;
+let forecast = null;
+const invalidate = () => { forecast = null; };
+function freshState(){
+  const organs = {};
+  for(const k in ORGANS) organs[k] = {base:96, rev:0, perm:0, seed:0};
+  const systems = {}; for(const k in SYSTEMS) systems[k] = 85;
+  return {
+    profile:{age:33, sex:'М', weight:78, height:178, location:'mid', conditions:[], acquired:[],
+             sedentary:6, sleep:7, stress:4, habits:{smoking:0, alcohol:0, diet:1, activity:1}},
+    organs, systems,
+    vitals:{pulse:72, oxy:98, glucose:5.2, cortisol:0, tox:0.1},
+    effects:[], addiction:2, day:0,
+  };
+}
+// base − обратимый − накопленный рубец − преднастройка
+const cur = o => Math.max(0, Math.min(100, o.base - o.rev - o.perm - (o.seed||0)));
+
+// применяет преднастройку профиля в seed; rev/perm (накопленное) НЕ трогает
+function applyPreconditions(){
+  const ageDrop = Math.max(0,(S.profile.age-30))*0.4;
+  for(const k in ORGANS){ const o=S.organs[k]; o.base=Math.max(60, 98-ageDrop); o.seed=0; if(o.perm==null)o.perm=0; if(o.rev==null)o.rev=0; }
+  for(const k in SYSTEMS) S.systems[k] = Math.max(50, 90 - Math.max(0,(S.profile.age-30))*0.5);
+  // витальные — транзиентные, сбрасываем к базе
+  S.vitals = {pulse:72, oxy:98, glucose:5.2, cortisol:0, tox:0.1};
+  // хронические болезни → seed
+  S.profile.conditions.forEach(cid=>{
+    const pc = PRECONDITIONS[cid]; if(!pc) return;
+    for(const [k,v] of Object.entries(pc.seedOrgans||{})) S.organs[k].seed += -v;
+    for(const [k,v] of Object.entries(pc.seedSystems||{})) S.systems[k] = Math.max(0,S.systems[k]+v);
+    for(const [k,v] of Object.entries(pc.seedVitals||{})) S.vitals[k] += v;
+  });
+  // образ жизни → seed
+  if(S.profile.sedentary>8){ S.organs.vessels.seed+=8; S.organs.heart.seed+=4; }
+  if(S.profile.sleep<6){ S.organs.brain.seed+=5; S.systems.immune=Math.max(0,S.systems.immune-8); }
+  if(S.profile.stress>6){ S.vitals.cortisol+=2; S.organs.heart.seed+=3; }
+  // регион → seed (факторы среды)
+  const f = (LOCATIONS[S.profile.location]||{}).factors||{};
+  if(f.uv){ S.organs.skin.seed += 6*f.uv; }
+  if(f.pollution){ S.organs.lungs.seed += 6*f.pollution; S.organs.heart.seed += 1.5*f.pollution; }
+  if(f.cold){ S.organs.vessels.seed += 5*f.cold; }
+  if(f.altitude){ S.vitals.oxy -= 2*f.altitude; S.organs.heart.seed -= 2*f.altitude; }
+  if(f.polarNight){ S.systems.bones=Math.max(0,S.systems.bones-5*f.polarNight); S.systems.immune=Math.max(0,S.systems.immune-5*f.polarNight); S.organs.vessels.seed += 3*f.polarNight; }
+  if(f.stressEnv){ S.vitals.cortisol += f.stressEnv; S.organs.heart.seed += 2*f.stressEnv; }
+  if(f.clean){ S.organs.lungs.seed -= 3*f.clean; }
+  invalidate();
+}
+
+// ════════════════════════════════════════════════
+// DATABASE (портировано из v4)
+// ════════════════════════════════════════════════
+const CATEGORIES = {
+  subs:[
+    {id:'alcohol',icon:'🍺',name:'Алкоголь',desc:'Этанол и метаболиты',items:[
+      {id:'beer',icon:'🍺',name:'Пиво',unit:'бутылок (0.5л)',max:8,type:'harmful',mech:'Этанол → ацетальдегид в печени. Хмель содержит фитоэстрогены. Объём жидкости нагружает почки.',o:{liver:-1.5,kidneys:-0.5},pulse:3,tox:.22,addDep:.4,tags:[{t:'Печень',c:'bad'},{t:'ГАМК↑',c:'organ'}]},
+      {id:'vodka',icon:'🥃',name:'Водка 40°',unit:'рюмок (50мл)',max:10,type:'harmful',mech:'Высокая концентрация этанола. Ацетальдегид токсичен для гепатоцитов, нейронов, миокарда.',o:{liver:-6,stomach:-2,brain:-1.5,heart:-1,pancreas:-2},pulse:8,tox:1.0,addDep:2,tags:[{t:'Печень',c:'bad'},{t:'Поджел.',c:'bad'},{t:'Нейротокс.',c:'bad'}]},
+      {id:'wine',icon:'🍷',name:'Вино',unit:'бокалов (150мл)',max:6,type:'harmful',mech:'Этанол + танины. Ресвератрол переоценён — этанол нивелирует пользу при >1 бокала.',o:{liver:-2,kidneys:-0.5},pulse:4,tox:.32,addDep:.7,tags:[{t:'Печень',c:'bad'}]},
+      {id:'moonshine',icon:'🫙',name:'Самогон',unit:'рюмок (50мл)',max:8,type:'harmful',mech:'Сивушные масла нейротоксичны, в 10-100 раз токсичнее этанола. Метанол при плохой перегонке → слепота.',o:{liver:-8,brain:-4,kidneys:-2,pancreas:-3},pulse:10,tox:1.8,addDep:2.5,tags:[{t:'Сивуш. масла',c:'bad'},{t:'Нейротокс.↑↑',c:'bad'}]},
+      {id:'energy_alc',icon:'⚡',name:'Алкоэнергетик',unit:'банок (0.5л)',max:4,type:'harmful',mech:'Кофеин маскирует опьянение. Таурин + этанол = двойная нагрузка на сердце.',o:{heart:-5,liver:-3,kidneys:-2,vessels:-2},pulse:20,tox:.4,addDep:1.5,tags:[{t:'⚠️ ОПАСНО',c:'bad'},{t:'Сердце↑↑',c:'bad'}]},
+    ]},
+    {id:'smoking',icon:'🚬',name:'Курение',desc:'Никотин, смолы, CO',items:[
+      {id:'cig',icon:'🚬',name:'Сигарета',unit:'штук',max:20,type:'harmful',mech:'CO → HbCO, вытесняет O₂. Никотин → вазоконстрикция, тахикардия. Смолы → канцерогены в альвеолах.',o:{lungs:-3.5,heart:-1.5,vessels:-2,skin:-1},oxy:-.7,tox:.4,addDep:3,tags:[{t:'Лёгкие',c:'bad'},{t:'CO↑',c:'bad'}]},
+      {id:'vape',icon:'💨',name:'Вейп/Pod',unit:'сессий',max:12,type:'harmful',mech:'Пропиленгликоль при нагреве → акролеин. Диацетил → попкорновые лёгкие. EVALI.',o:{lungs:-2,heart:-0.5},oxy:-.3,tox:.22,addDep:2.5,tags:[{t:'Акролеин',c:'bad'},{t:'EVALI',c:'bad'}]},
+      {id:'hookah',icon:'🌫️',name:'Кальян',unit:'часов',max:3,type:'harmful',mech:'1 час кальяна = 100+ сигарет по объёму дыма. CO в 10-50 раз выше нормы.',o:{lungs:-8,brain:-2,heart:-2},oxy:-2,tox:.9,addDep:1,tags:[{t:'CO↑↑↑',c:'bad'}]},
+    ]},
+    {id:'poisons',icon:'☠️',name:'Яды',desc:'Токсичные вещества',items:[
+      {id:'co_gas',icon:'💨',name:'Угарный газ',unit:'минут',max:60,type:'harmful',mech:'CO в 250 раз прочнее O₂ связывается с гемоглобином. HbCO 50% → кома. Мозг и сердце — первые жертвы.',o:{brain:-8,heart:-5,lungs:-3,blood:-6},oxy:-3,tox:1.5,addDep:0,tags:[{t:'HbCO↑↑',c:'bad'},{t:'Гипоксия',c:'bad'}]},
+      {id:'amanita',icon:'🍄',name:'Бледная поганка',unit:'грамм',max:50,type:'harmful',mech:'Аматоксины блокируют РНК-полимеразу. Симптомы через 6-24ч. 90% смертей от грибных отравлений.',o:{liver:-15,kidneys:-8,gut:-10},tox:3,addDep:0,perm:.8,tags:[{t:'Аматоксин',c:'bad'},{t:'Печ. недост.',c:'bad'}]},
+      {id:'paracetamol_od',icon:'💊',name:'Передоз парацетамола',unit:'г',max:15,type:'harmful',mech:'NAPQI истощает глутатион → некроз печени. Антидот: N-ацетилцистеин в первые часы.',o:{liver:-12,kidneys:-5},tox:2.5,addDep:0,perm:.7,tags:[{t:'Некроз печени',c:'bad'}]},
+    ]},
+    {id:'meds',icon:'💊',name:'Лекарства',desc:'Хроническое применение',items:[
+      {id:'antibiotics',icon:'💊',name:'Антибиотики (курс)',unit:'курсов',max:6,type:'neutral',mech:'Широкоспектральные АБ уничтожают микробиом. Восстановление 1-2 года. C.diff риск.',o:{gut:-8,liver:-2},tox:.2,addDep:0,tags:[{t:'Микробиом↓↓',c:'bad'}]},
+      {id:'nsaids',icon:'💊',name:'НПВС хронически',unit:'лет',max:10,type:'harmful',mech:'ЦОГ-ингибиция → защита желудка↓, почечный кровоток↓, задержка воды.',o:{stomach:-4,kidneys:-3,heart:-1},tox:.15,addDep:0,tags:[{t:'Язва',c:'bad'},{t:'Почки↓',c:'bad'}]},
+    ]},
+  ],
+  sport:[
+    {id:'cardio',icon:'❤️',name:'Кардио',desc:'Аэробная нагрузка',items:[
+      {id:'walk',icon:'🚶',name:'Ходьба',unit:'км',max:20,type:'good',mech:'Аэробный метаболизм. VO2max +5-8%. Снижает инсулинорезистентность.',o:{heart:2,lungs:1,vessels:1},pulse:-2,tox:-.1,addDep:-.2,tags:[{t:'Доступно',c:'good'},{t:'VO2max↑',c:'good'}]},
+      {id:'run',icon:'🏃',name:'Бег',unit:'км',max:42,type:'good',mech:'Катехоламины↑ → эйфория. VO2max +15-20%. Левый желудочек адаптируется.',o:{heart:4,lungs:3,vessels:2},pulse:-4,tox:-.15,addDep:-.3,tags:[{t:'VO2max↑↑',c:'good'},{t:'Суставы риск',c:'organ'}]},
+      {id:'swimming',icon:'🏊',name:'Плавание',unit:'км',max:10,type:'good',mech:'Венозный возврат облегчён. Нет ударной нагрузки. Лёгкие против сопротивления → VC↑.',o:{heart:3.5,lungs:4,kidneys:1},pulse:-3,tox:-.12,addDep:-.2,tags:[{t:'Суставы ок',c:'good'},{t:'ЖЁЛ↑',c:'good'}]},
+      {id:'hiit',icon:'🔥',name:'HIIT',unit:'минут',max:60,type:'good',mech:'EPOC (дожигание) 24-48ч. Быстрый рост VO2max. Не для начинающих.',o:{heart:5,lungs:3,vessels:2},pulse:-5,tox:-.2,addDep:-.4,tags:[{t:'EPOC',c:'good'},{t:'VO2max↑↑↑',c:'good'}]},
+    ]},
+    {id:'strength',icon:'💪',name:'Силовая',desc:'Анаэробная, кости',items:[
+      {id:'gym_base',icon:'🏋️',name:'Базовые упражнения',unit:'тренировок',max:20,type:'good',mech:'ИФР-1, тестостерон↑. Плотность костей↑. Базальный метаболизм +10-15%.',o:{heart:3,bones:3,endocrine:2},pulse:-2,tox:-.1,addDep:-.2,tags:[{t:'Кости↑',c:'good'},{t:'Тестостерон↑',c:'good'}]},
+      {id:'crossfit',icon:'🔄',name:'Кроссфит',unit:'тренировок',max:16,type:'good',mech:'Высокообъёмная работа + кардио. Рабдомиолиз — риск при перегрузке (миоглобин → почки).',o:{heart:4,lungs:2,kidneys:-1,bones:2},pulse:-3,tox:-.1,addDep:-.3,tags:[{t:'Рабдомиолиз',c:'bad'},{t:'Функционал↑',c:'good'}]},
+    ]},
+    {id:'mind',icon:'🧘',name:'Тело/разум',desc:'Стресс, гибкость, сон',items:[
+      {id:'yoga',icon:'🧘',name:'Йога',unit:'часов',max:10,type:'good',mech:'Парасимпатика → кортизол↓, ГАМК↑. Вагальный тонус↑. Оксид азота → сосудорасширение.',o:{brain:3,heart:2,vessels:1},pulse:-5,tox:-.15,addDep:-.5,cortisol:-1,tags:[{t:'Кортизол↓',c:'good'},{t:'ВСР↑',c:'good'}]},
+      {id:'meditation',icon:'🧠',name:'Медитация',unit:'часов',max:8,type:'good',mech:'Амигдала уменьшается структурно. Кортизол↓, дофамин в покое↑.',o:{brain:4,endocrine:2},pulse:-4,tox:-.1,addDep:-.5,cortisol:-1.5,tags:[{t:'Стресс↓↓',c:'good'}]},
+      {id:'sleep',icon:'😴',name:'Качественный сон',unit:'ночей (8ч)',max:14,type:'good',mech:'Глимфатика чистит мозг от амилоида-β. ГР в первые 2ч. Консолидация памяти, иммунитет.',o:{brain:4,heart:2,immune:3},pulse:-4,tox:-.25,addDep:-1,cortisol:-1,tags:[{t:'Амилоид↓',c:'good'},{t:'Иммунитет↑',c:'good'}]},
+    ]},
+  ],
+  food:[
+    {id:'proteins',icon:'🥩',name:'Белки',desc:'Аминокислоты',items:[
+      {id:'fish',icon:'🐟',name:'Жирная рыба',unit:'порций',max:4,type:'good',mech:'EPA/DHA омега-3 — противовоспалительные. Снижают ТГ на 20-30%, поддерживают миелин.',o:{heart:2,brain:1.5,vessels:1},tox:0,addDep:0,tags:[{t:'EPA/DHA',c:'good'},{t:'ТГ↓↓',c:'good'}]},
+      {id:'chicken',icon:'🍗',name:'Курица (грудка)',unit:'порций',max:4,type:'good',mech:'Полноценный белок — все 9 НАК. Лейцин → mTOR → синтез мышц.',o:{stomach:1,bones:.5},tox:0,addDep:0,tags:[{t:'НАК все 9',c:'good'}]},
+    ]},
+    {id:'carbs',icon:'🌾',name:'Углеводы',desc:'ГИ, клетчатка',items:[
+      {id:'oats',icon:'🥣',name:'Овсянка',unit:'порций',max:2,type:'good',mech:'β-глюкан снижает LDL на 5-10%. Авенантрамиды противовоспалительные.',o:{heart:1,gut:1.5,vessels:.5},tox:0,addDep:0,tags:[{t:'β-глюкан',c:'good'}]},
+      {id:'noodles',icon:'🍜',name:'Бичпакет',unit:'пачек',max:5,type:'harmful',mech:'Натрий 1800-2300мг/порция. ТБХК нейротоксичность. ГИ ~73. Пальмовое масло.',o:{kidneys:-1.5,stomach:-2,heart:-1,vessels:-1},tox:.2,addDep:.3,glucose:.4,tags:[{t:'Na↑↑',c:'bad'},{t:'ГИ 73',c:'bad'}]},
+      {id:'white_bread',icon:'🍞',name:'Белый хлеб',unit:'ломтей',max:6,type:'neutral',mech:'ГИ 70-85. Быстрый инсулиновый пик → реактивная гипогликемия.',o:{stomach:-0.5,pancreas:-0.5},tox:.05,addDep:.3,glucose:.5,tags:[{t:'ГИ 70-85',c:'bad'}]},
+    ]},
+    {id:'fats',icon:'🥑',name:'Жиры',desc:'Насыщ., транс',items:[
+      {id:'fastfood',icon:'🍔',name:'Фастфуд',unit:'порций',max:5,type:'harmful',mech:'Трансжиры повышают LDL и снижают HDL. Натрий → гипертония. ГИ↑ + жир = макс. калории.',o:{heart:-2.5,stomach:-3.5,liver:-1.5,vessels:-2},tox:.18,addDep:.5,glucose:.3,tags:[{t:'Трансжиры',c:'bad'},{t:'LDL↑',c:'bad'}]},
+      {id:'nuts',icon:'🥜',name:'Орехи',unit:'горстей',max:3,type:'good',mech:'Ω-3 (АЛК), витамин E, магний. Снижают ССЗ риск на 20-30%.',o:{heart:1.5,brain:1,vessels:1},tox:0,addDep:0,tags:[{t:'Ω-3',c:'good'},{t:'ССЗ↓',c:'good'}]},
+    ]},
+    {id:'veg',icon:'🥦',name:'Овощи/фрукты',desc:'Фитонутриенты',items:[
+      {id:'greens',icon:'🥦',name:'Крестоцветные',unit:'порций',max:4,type:'good',mech:'Сульфорафан → фаза II детокса (NRF2). Антиканцерогенный эффект.',o:{liver:2,gut:1.5,immune:1},tox:-.12,addDep:0,tags:[{t:'Сульфорафан',c:'good'},{t:'NRF2↑',c:'good'}]},
+      {id:'berries',icon:'🫐',name:'Ягоды',unit:'порций',max:3,type:'good',mech:'Антоцианы → BDNF↑. Птеростильбен биодоступнее ресвератрола. Нейропротекция.',o:{brain:2,heart:1},tox:-.08,addDep:0,tags:[{t:'BDNF↑',c:'good'}]},
+      {id:'garlic',icon:'🧄',name:'Чеснок',unit:'зубчиков',max:6,type:'good',mech:'Аллицин снижает АД на 7-8 мм рт.ст. Тиосульфинаты → иммунитет.',o:{heart:1,vessels:1,immune:1},tox:-.05,addDep:0,tags:[{t:'Аллицин',c:'good'},{t:'АД↓',c:'good'}]},
+    ]},
+  ],
+};
+
+// ════════════════════════════════════════════════
+// ГРАФ БОЛЕЗНЕЙ (Фаза 2)
+// каждый узел: yearlyDamage (прогрессия), transitions (каскад),
+// acute (острое событие с летальностью). riskMult учитывает образ жизни.
+// ════════════════════════════════════════════════
+const DISEASES = {
+  pancreatitis:{name:'Панкреатит', yearlyDamage:{pancreas:2}, glucoseUp:0.05,
+    transitions:[{to:'diabetes', base:0.05, mods:{alcohol:0.8, obese:0.6}}],
+    acute:{name:'панкреонекроз', base:0.015, lethality:0.4, mods:{alcohol:1.2}}},
+  diabetes:{name:'Диабет 2т', yearlyDamage:{vessels:2, kidneys:1.5, pancreas:1}, glucoseUp:0.1,
+    transitions:[{to:'nephropathy', base:0.035},{to:'retinopathy', base:0.03}],
+    acute:{name:'гипергликем. кома', base:0.008, lethality:0.3}},
+  hypertension:{name:'Гипертония', yearlyDamage:{vessels:2, heart:1.5, kidneys:1},
+    transitions:[{to:'ihd', base:0.04, mods:{smoking:0.6}}],
+    acute:{name:'инсульт', base:0.018, lethality:0.4, mods:{smoking:0.8, obese:0.5, cold:0.4}}},
+  ihd:{name:'ИБС', yearlyDamage:{heart:2.5},
+    acute:{name:'инфаркт', base:0.028, lethality:0.4, mods:{smoking:1.0}}},
+  nephropathy:{name:'Нефропатия', yearlyDamage:{kidneys:3},
+    transitions:[{to:'kidney_failure', base:0.05}]},
+  kidney_failure:{name:'Отказ почек', yearlyDamage:{kidneys:5},
+    acute:{name:'уремия', base:0.09, lethality:0.55}},
+  retinopathy:{name:'Ретинопатия', yearlyDamage:{}},
+  copd:{name:'ХОБЛ', yearlyDamage:{lungs:3, heart:1},
+    acute:{name:'дых. недостаточность', base:0.022, lethality:0.35}},
+  asthma:{name:'Астма', yearlyDamage:{lungs:0.5},
+    transitions:[{to:'copd', base:0.03, mods:{smoking:1.5}}]},
+  liver_dis:{name:'Болезнь печени', yearlyDamage:{liver:1.5},
+    transitions:[{to:'cirrhosis', base:0.04, mods:{alcohol:1.0}}]},
+  cirrhosis:{name:'Цирроз', yearlyDamage:{liver:3.5},
+    transitions:[{to:'liver_cancer', base:0.025}],
+    acute:{name:'печён. недостаточность', base:0.04, lethality:0.5}},
+  liver_cancer:{name:'Рак печени', yearlyDamage:{liver:5},
+    acute:{name:'опухоль', base:0.12, lethality:0.7}},
+  melanoma:{name:'Меланома', yearlyDamage:{skin:4},
+    acute:{name:'метастазы', base:0.06, lethality:0.55}},
+};
+const VITAL_ORGANS = ['heart','brain','liver','kidneys','lungs'];
+
+// AI-калибровка: множители риска по болезням (задаётся AI до прогона, НЕ в цикле)
+let aiCalib = null;
+const calMult = id => (aiCalib && aiCalib.diseaseMult && aiCalib.diseaseMult[id]) || 1;
+
+const bmi = p => p.weight / Math.pow(p.height/100, 2);
+function deriveLifestyle(p){
+  const h = p.habits||{smoking:0,alcohol:0,diet:1,activity:1};
+  const b = bmi(p);
+  const f = (LOCATIONS[p.location]||{}).factors||{};
+  return {smoking:h.smoking, alcohol:h.alcohol, diet:h.diet, activity:h.activity,
+    sedentary:p.sedentary, stress:p.stress, sleep:p.sleep,
+    obese: b>30?1:(b>27?0.5:0),
+    uv:f.uv||0, cold:f.cold||0, pollution:f.pollution||0, altitude:f.altitude||0,
+    polarNight:f.polarNight||0, stressEnv:f.stressEnv||0, clean:f.clean||0};
+}
+function riskMult(mods, L){
+  if(!mods) return 1;
+  let m=1;
+  for(const [k,w] of Object.entries(mods)){
+    let lvl=0;
+    if(k==='alcohol')lvl=L.alcohol; else if(k==='smoking')lvl=L.smoking;
+    else if(k==='obese')lvl=L.obese; else if(k==='sedentary')lvl=L.sedentary/14;
+    else if(k==='stress')lvl=L.stress/10; else if(k==='uv')lvl=L.uv;
+    else if(k==='dietbad')lvl=(2-L.diet)/2;
+    else if(k==='cold')lvl=L.cold; else if(k==='pollution')lvl=L.pollution;
+    m += w*lvl;
+  }
+  return Math.max(0.2, m);
+}
+// годовой дрейф органов от образа жизни (мутирует org/vit)
+function lifestyleDrift(org, vit, L){
+  org.lungs -= [0,2,5][L.smoking]||0;
+  org.vessels -= ([0,1,2.5][L.smoking]||0);
+  org.heart -= ([0,.5,1.5][L.smoking]||0);
+  org.skin -= ([0,.5,1][L.smoking]||0);
+  org.liver -= ([0,1.5,4][L.alcohol]||0);
+  org.pancreas -= ([0,1,2.5][L.alcohol]||0);
+  org.brain -= ([0,.5,1.5][L.alcohol]||0);
+  if(L.diet===0){ org.vessels-=2; org.heart-=1; vit.glucose+=0.15; }
+  else if(L.diet===2){ org.vessels+=0.5; org.heart+=0.3; }
+  if(L.activity===2){ org.heart+=1.5; org.vessels+=1; org.lungs+=0.5; }
+  else if(L.activity===0){ org.heart-=1; org.vessels-=1; }
+  if(L.sedentary>8) org.vessels-=1.5;
+  if(L.stress>6) org.heart-=1;
+  if(L.sleep<6) org.brain-=1;
+  if(L.obese){ org.pancreas-=1; org.vessels-=1.5; org.heart-=0.5; vit.glucose+=0.2*L.obese; }
+}
+// годовой дрейф органов от среды проживания
+function environmentDrift(org, vit, L){
+  if(L.uv){ org.skin -= 1.2*L.uv; }
+  if(L.pollution){ org.lungs -= 1.3*L.pollution; org.heart -= 0.3*L.pollution; }
+  if(L.cold){ org.vessels -= 0.9*L.cold; org.heart -= 0.3*L.cold; }
+  if(L.polarNight){ org.vessels -= 0.5*L.polarNight; }
+  if(L.stressEnv){ org.heart -= 0.5*L.stressEnv; }
+  if(L.clean){ org.lungs += 0.4*L.clean; }
+  if(L.altitude){ org.heart += 0.3*L.altitude; }  // адаптация сердца к гипоксии
+}
+// появление новых болезней из состояния органов
+function checkOnset(org, vit, active, L){
+  const add=[];
+  const tryD=(id,prob)=>{ if(!active.has(id)&&!add.includes(id)&&Math.random()<prob*calMult(id)) add.push(id); };
+  if(org.pancreas<55) tryD('pancreatitis', 0.03*(1+0.8*L.alcohol));
+  tryD('diabetes', clamp(0.01+Math.max(0,vit.glucose-6)*0.06+0.04*L.obese+(org.pancreas<60?0.03:0), 0, 0.3));
+  if(org.vessels<68) tryD('hypertension', 0.03+0.02*(L.sedentary/14)+0.02*(L.stress/10)+0.03*L.obese);
+  if(org.heart<62||active.has('hypertension')) tryD('ihd', 0.025*(1+0.8*L.smoking+0.4*L.cold));
+  if(org.lungs<62&&(L.smoking>0||L.pollution>0)) tryD('copd', 0.025*(L.smoking+0.7*L.pollution));
+  if(org.liver<48) tryD('cirrhosis', 0.03*(1+0.8*L.alcohol));
+  if(org.skin<55&&L.uv>0) tryD('melanoma', 0.02*L.uv);
+  return add;
+}
+// один год жизни: мутирует org/vit/active, возвращает {death, news}
+function oneYear(org, vit, active, L, age){
+  const start={}; for(const k in org) start[k]=org[k];
+  // — урон органов за год —
+  const aging = 0.3 + Math.max(0,age-45)*0.035;
+  for(const k in org) org[k]-=aging;
+  lifestyleDrift(org, vit, L);
+  environmentDrift(org, vit, L);
+  for(const id of active){
+    const D=DISEASES[id]; if(!D) continue;
+    for(const [k,v] of Object.entries(D.yearlyDamage||{})) if(org[k]!=null) org[k]-=v;
+    if(D.glucoseUp) vit.glucose+=D.glucoseUp;
+  }
+  // затухание: чем ниже орган, тем медленнее он разрушается (компенсация)
+  for(const k in org){
+    const d=start[k]-org[k];
+    if(d>0){ const resist=0.4+0.6*(start[k]/100); org[k]=start[k]-d*resist; }
+    org[k]=clamp(org[k],0,100);
+  }
+  // — события (на состоянии конца года) —
+  let death=null; const news=[];
+  for(const id of [...active]){
+    const D=DISEASES[id]; if(!D) continue;
+    for(const t of D.transitions||[]) if(!active.has(t.to)&&Math.random()<t.base*riskMult(t.mods,L)*calMult(t.to)){ active.add(t.to); news.push(t.to); }
+    if(D.acute && Math.random()<D.acute.base*riskMult(D.acute.mods,L)*calMult(id)){ if(Math.random()<D.acute.lethality) death=D.acute.name; }
+  }
+  for(const id of checkOnset(org,vit,active,L)){ active.add(id); news.push(id); }
+  // отказ органа: вероятность растёт по мере истощения (не абсолютный порог)
+  for(const k of VITAL_ORGANS){ if(org[k]<25 && Math.random()<(25-org[k])/25*0.35) death=death||('отказ: '+ORGANS[k].name); }
+  // фоновая возрастная смертность (Гомпертц), усиливается плохим состоянием органов
+  const avgOrg=(org.heart+org.brain+org.liver+org.kidneys+org.lungs+org.vessels)/6;
+  let pAge=0.0004*Math.exp((age-40)/9);
+  if(avgOrg<70) pAge*=1+(70-avgOrg)/35;
+  if(Math.random()<pAge) death=death||'возрастные причины';
+  return {death, news};
+}
+// одна виртуальная жизнь на N лет (read-only от S)
+function simulateLife(years){
+  const org={}; for(const k in ORGANS) org[k]=cur(S.organs[k]);
+  const vit={glucose:S.vitals.glucose};
+  const L=deriveLifestyle(S.profile);
+  const active=new Set([...S.profile.conditions, ...(S.profile.acquired||[])].filter(c=>DISEASES[c]));
+  let died=false, deathYear=null; const ms={}; const cps=[1,5,10,20];
+  for(let y=1;y<=years;y++){
+    const r=oneYear(org,vit,active,L,S.profile.age+y);
+    if(r.death){ died=true; deathYear=y; }
+    if(cps.includes(y)) ms[y]={alive:!died, diseases:[...active]};
+    if(died){ cps.forEach(c=>{ if(c>=y&&!ms[c]) ms[c]={alive:false, diseases:[...active]}; }); break; }
+  }
+  return {died, deathYear, milestones:ms};
+}
+// 1000 судеб → агрегированные вероятности
+function computeForecast(runs=1000){
+  const cps=[1,5,10,20]; const agg={}; cps.forEach(c=>agg[c]={dead:0,dis:{}});
+  for(let i=0;i<runs;i++){
+    const r=simulateLife(20);
+    cps.forEach(c=>{ const m=r.milestones[c]; if(!m) return;
+      if(!m.alive) agg[c].dead++;
+      m.diseases.forEach(d=>{ agg[c].dis[d]=(agg[c].dis[d]||0)+1; }); });
+  }
+  const F={};
+  cps.forEach(c=>{ F[c]={death:Math.round(agg[c].dead/runs*100), dis:{}};
+    for(const [d,n] of Object.entries(agg[c].dis)) F[c].dis[d]=Math.round(n/runs*100); });
+  forecast=F;
+}
+// прожить год на ЖИВОМ состоянии (мутирует S, урон → perm)
+function stepLiveYear(){
+  const org={}; for(const k in ORGANS) org[k]=cur(S.organs[k]);
+  const vit={glucose:S.vitals.glucose};
+  const L=deriveLifestyle(S.profile);
+  const active=new Set([...S.profile.conditions, ...(S.profile.acquired||[])].filter(c=>DISEASES[c]));
+  const before=new Set(active);
+  const r=oneYear(org,vit,active,L,S.profile.age+1);
+  S.profile.age++;
+  for(const k in ORGANS){ const delta=cur(S.organs[k])-org[k]; if(delta>0) S.organs[k].perm+=delta; }
+  S.vitals.glucose=+vit.glucose.toFixed(1);
+  active.forEach(id=>{ if(!S.profile.conditions.includes(id)&&!S.profile.acquired.includes(id)) S.profile.acquired.push(id); });
+  invalidate(); save(); render();
+  const gained=[...active].filter(x=>!before.has(x)).map(x=>DISEASES[x]?.name).filter(Boolean);
+  if(r.death) toast('☠️ '+r.death+' — судьба оборвалась в '+S.profile.age);
+  else if(gained.length) toast('📅 Год прожит · развилось: '+gained.join(', '));
+  else toast('📅 Год прожит · возраст '+S.profile.age);
+}
+
+// ════════════════════════════════════════════════
+// ВРЕМЯ СУТОК + затухание
+// ════════════════════════════════════════════════
+let tod = 'morning';
+const TOD_MULT = {night:1.4, morning:1.2, day:1.0, evening:1.1};
+
+function condMultFor(item){
+  let m = 1;
+  const c = S.profile.conditions;
+  if(c.includes('liver_dis') && item.o?.liver) m *= 1.8;
+  if(c.includes('hypertension') && item.pulse) m *= 1.3;
+  if(c.includes('asthma') && (item.o?.lungs)) m *= 1.6;
+  if(c.includes('diabetes') && item.glucose) m *= 1.6;
+  if(c.includes('pancreatitis') && item.o?.pancreas) m *= 1.7;
+  return m;
+}
+
+// ════════════════════════════════════════════════
+// ПРИМЕНЕНИЕ ДОЗЫ
+// ════════════════════════════════════════════════
+let currentSub=null, currentTab='subs';
+let drill={subs:null,sport:null,food:null};
+
+function findItem(id){
+  for(const grp of Object.values(CATEGORIES))
+    for(const cat of grp){ const it=cat.items.find(i=>i.id===id); if(it) return it; }
+  return null;
+}
+
+function calcImpact(item, dose){
+  const mult = dose * TOD_MULT[tod] * condMultFor(item);
+  const out = {organs:{}, systems:{}, vitals:{}, mult};
+  for(const [k,v] of Object.entries(item.o||{})){
+    if(ORGANS[k]) out.organs[k] = v*mult;
+    else if(SYSTEMS[k]) out.systems[k] = v*mult;
+  }
+  if(item.pulse) out.vitals.pulse = item.pulse*mult;
+  if(item.oxy) out.vitals.oxy = item.oxy*mult;
+  if(item.tox) out.vitals.tox = item.tox*mult;
+  if(item.glucose) out.vitals.glucose = item.glucose*mult;
+  if(item.cortisol) out.vitals.cortisol = item.cortisol*mult;
+  return out;
+}
+
+function applyDose(item, dose){
+  const imp = calcImpact(item, dose);
+  const permRatio = item.perm!=null ? item.perm : (item.type==='harmful'?0.3:0);
+  for(const [k,v] of Object.entries(imp.organs)){
+    const o = S.organs[k];
+    if(v<0){ o.rev += -v*(1-permRatio); o.perm += -v*permRatio; }
+    else { o.rev = Math.max(0, o.rev - v); }  // польза снимает обратимый урон
+  }
+  for(const [k,v] of Object.entries(imp.systems)) S.systems[k] = Math.max(0, Math.min(100, S.systems[k]+v));
+  if(imp.vitals.pulse) S.vitals.pulse = clamp(S.vitals.pulse+Math.round(imp.vitals.pulse),38,200);
+  if(imp.vitals.oxy) S.vitals.oxy = clamp(S.vitals.oxy+imp.vitals.oxy,70,100);
+  if(imp.vitals.tox) S.vitals.tox = Math.max(0,+(S.vitals.tox+imp.vitals.tox).toFixed(2));
+  if(imp.vitals.glucose) S.vitals.glucose = Math.max(3.5,+(S.vitals.glucose+imp.vitals.glucose).toFixed(1));
+  if(imp.vitals.cortisol) S.vitals.cortisol = Math.max(0,+(S.vitals.cortisol+imp.vitals.cortisol).toFixed(1));
+  if(item.addDep) S.addiction = clamp(S.addiction+item.addDep*dose,0,100);
+
+  const t = new Date().toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'});
+  S.effects.unshift({name:item.name,icon:item.icon,type:item.type,dose:dose+' '+item.unit,time:t,tod});
+  if(S.effects.length>14) S.effects.pop();
+
+  // анимация органов
+  for(const k of Object.keys(imp.organs)){
+    const el=document.getElementById('og-'+k); if(!el) continue;
+    el.classList.remove('hit','damaged'); void el.offsetWidth; el.classList.add('hit');
+    const dmg=imp.organs[k];
+    if(dmg<-8) setTimeout(()=>{el.classList.remove('hit');el.classList.add('damaged');},600);
+    else setTimeout(()=>el.classList.remove('hit'),600);
+  }
+  checkCombos(); invalidate(); save(); render();
+  toast(item.icon+' '+item.name+' · '+dose+' '+item.unit);
+}
+
+// затухание обратимого урона + дрейф к норме (шаг времени)
+function advanceDay(){
+  S.day++;
+  for(const k in S.organs){ S.organs[k].rev *= 0.6; if(S.organs[k].rev<0.3) S.organs[k].rev=0; }
+  const oxyBase = 98 - 2*(((LOCATIONS[S.profile.location]||{}).factors||{}).altitude||0);
+  S.vitals.pulse += (72 - S.vitals.pulse)*0.5;
+  S.vitals.oxy += (oxyBase - S.vitals.oxy)*0.5;
+  S.vitals.tox *= 0.4; if(S.vitals.tox<0.1) S.vitals.tox=0.1;
+  S.vitals.cortisol *= 0.5;
+  S.vitals.glucose += (5.2 - S.vitals.glucose)*0.4;
+  S.vitals.pulse=Math.round(S.vitals.pulse);
+  invalidate(); save(); render(); toast('⏭ День '+S.day+' — обратимый урон спал, рубцы остались');
+}
+
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+function checkCombos(){
+  const warns=[]; const recent=S.effects.slice(0,6);
+  const alc=['Водка 40°','Пиво','Вино','Самогон','Алкоэнергетик'];
+  const hasAlc=recent.some(e=>alc.includes(e.name));
+  const hasEnergy=recent.some(e=>e.name==='Алкоэнергетик');
+  const hasCig=recent.some(e=>['Сигарета','Кальян'].includes(e.name));
+  if(hasAlc&&hasEnergy) warns.push({t:'☠️ Алкоэнергетик',b:'Кофеин маскирует опьянение. Риск передоза алкоголя. Нагрузка на сердце ×2.5.'});
+  if(hasAlc&&hasCig) warns.push({t:'🚬 Алкоголь + курение',b:'Оба вазоконстрикторы + гепатотоксичны. Риск рака ротоглотки ×15.'});
+  if(recent.filter(e=>alc.includes(e.name)).length>=3) warns.push({t:'🍺 Полиинтоксикация',b:'Печень не успевает метаболизировать этанол (≈10мл/ч). Уровень нарастает.'});
+  document.getElementById('combo-warnings').innerHTML = warns.map(w=>`<div class="combo-warn"><div class="combo-title">${w.t}</div><div class="combo-text">${w.b}</div></div>`).join('');
+}
+
+// ════════════════════════════════════════════════
+// RENDER
+// ════════════════════════════════════════════════
+function colorFor(v){ return v<50?'var(--red)':v<75?'var(--yellow)':'var(--green)'; }
+
+function render(){
+  // органы (список)
+  document.getElementById('organ-list').innerHTML = Object.entries(ORGANS).map(([k,m])=>{
+    const o=S.organs[k]; const v=Math.round(cur(o));
+    const c=v<50?'var(--red)':v<75?'var(--yellow)':m.c;
+    const permPct=Math.round(o.perm);
+    return `<div class="ol-row" data-organ="${k}"><div class="ol-name">${m.name}</div><div class="ol-bar"><div class="ol-fill" style="width:${v}%;background:${c}"></div>${permPct>2?`<div class="ol-perm" style="width:${permPct}%"></div>`:''}</div><div class="ol-pct" style="color:${c}">${v}%</div></div>`;
+  }).join('');
+  // органы (svg цвет/повреждение)
+  for(const k in ORGANS){ const el=document.getElementById('og-'+k); if(el){ const v=cur(S.organs[k]); el.style.opacity = v<40?0.4:1; } }
+
+  // витальные
+  const p=Math.round(S.vitals.pulse), o=Math.round(S.vitals.oxy);
+  const sys=Math.round(120+(p-72)*.85), dia=Math.round(80+(p-72)*.45);
+  const vit=[
+    {n:'Пульс',v:p,u:'уд/мин',c:p>110?'var(--red)':p>90?'var(--yellow)':'var(--heart-c)',w:Math.min(100,p/2)},
+    {n:'Давл.',v:sys+'/'+dia,u:'мм рт.ст',c:sys>140?'var(--red)':sys>130?'var(--yellow)':'var(--cyan)',w:Math.min(100,sys/2),sm:1},
+    {n:'O₂',v:o,u:'%',c:o<90?'var(--red)':o<95?'var(--yellow)':'var(--green)',w:o},
+    {n:'Глюк.',v:S.vitals.glucose,u:'ммоль/л',c:S.vitals.glucose>7?'var(--red)':S.vitals.glucose>6?'var(--yellow)':'var(--green)',w:Math.min(100,S.vitals.glucose*12)},
+    {n:'Кортиз.',v:S.vitals.cortisol>0?'↑'+S.vitals.cortisol:'норма',c:S.vitals.cortisol>3?'var(--red)':S.vitals.cortisol>0?'var(--yellow)':'var(--green)',u:'стресс',w:Math.min(100,S.vitals.cortisol*15),sm:1},
+    {n:'Токс.',v:S.vitals.tox,u:'мг/дл',c:S.vitals.tox>2?'var(--red)':S.vitals.tox>.8?'var(--yellow)':'var(--green)',w:Math.min(100,S.vitals.tox*12)},
+  ];
+  document.getElementById('vit-grid').innerHTML = vit.map(x=>`<div class="vc" style="--c:${x.c};--w:${x.w}%"><div class="vn">${x.n}</div><div class="vv" style="${x.sm?'font-size:14px':''}">${x.v}</div><div class="vu">${x.u}</div></div>`).join('');
+
+  // системы
+  document.getElementById('sys-list').innerHTML = Object.entries(SYSTEMS).map(([k,m])=>{
+    const v=Math.round(S.systems[k]); const c=colorFor(v);
+    return `<div class="sys-row"><div class="sys-name">${m.name}</div><div class="sys-bar"><div class="sys-fill" style="width:${v}%;background:${c}"></div></div><div class="sys-pct" style="color:${c}">${v}%</div></div>`;
+  }).join('');
+
+  // шапка
+  const allOrg=Object.keys(ORGANS).map(k=>cur(S.organs[k]));
+  const avg=Math.round(allOrg.reduce((a,b)=>a+b)/allOrg.length);
+  set('h-health',avg+'%',avg<60?'var(--red)':avg<80?'var(--yellow)':'var(--green)');
+  const bio=S.profile.age+Math.round((100-avg)*.35);
+  set('h-bio',bio,bio>S.profile.age+5?'var(--red)':bio>S.profile.age+2?'var(--yellow)':'var(--cyan)');
+  const risk=avg<60?'HIGH':avg<80?'MED':'LOW';
+  set('h-risk',risk,risk==='HIGH'?'var(--red)':risk==='MED'?'var(--yellow)':'var(--green)');
+  set('h-loc',LOCATIONS[S.profile.location].name,'var(--cyan)');
+
+  // болезни
+  renderConditions();
+  // прогноз 1000 судеб
+  renderForecast();
+
+  // журнал
+  document.getElementById('eff-list').innerHTML = S.effects.length?S.effects.map(e=>`<div class="eff-item ${e.type}"><span class="eff-icon">${e.icon}</span><div class="eff-info"><div class="eff-name">${e.name}</div><div class="eff-detail">${e.dose} · ${e.tod}</div></div><span class="eff-time">${e.time}</span></div>`).join(''):'<div class="empty-state">Нет активных воздействий</div>';
+}
+
+function renderConditions(){
+  const el=document.getElementById('cond-list');
+  const all=[...new Set([...S.profile.conditions, ...(S.profile.acquired||[])])].filter(id=>DISEASES[id]||PRECONDITIONS[id]);
+  if(!all.length){ el.innerHTML='<div class="cond-empty">Болезней нет</div>'; return; }
+  const PROG={pancreatitis:'→ диабет 2т · риск↑ при алкоголе',hypertension:'→ ИБС → инфаркт / инсульт',diabetes:'→ нефропатия, ретинопатия',asthma:'→ ХОБЛ при курении',liver_dis:'→ цирроз → рак',ihd:'→ инфаркт миокарда',nephropathy:'→ отказ почек',kidney_failure:'⚠ терминальная стадия',copd:'→ дых. недостаточность',cirrhosis:'→ рак печени, печён. недост.',liver_cancer:'⚠ онкология',retinopathy:'осложнение диабета',melanoma:'⚠ онкология кожи'};
+  el.innerHTML = all.map(id=>{
+    const D=DISEASES[id]; const pc=PRECONDITIONS[id];
+    const name=(pc||D)?.name||id;
+    const okey=pc?Object.keys(pc.seedOrgans||{})[0]:(D&&Object.keys(D.yearlyDamage||{})[0]);
+    const v=okey?Math.round(cur(S.organs[okey])):null;
+    const acq=!S.profile.conditions.includes(id);
+    return `<div class="cond-card"${acq?' style="border-left-color:var(--red)"':''}><div class="cond-top"><span class="cond-n">${name}${acq?' <span style="font-size:7px;color:var(--red)">нажито</span>':''}</span><span class="cond-s" style="color:${v!=null?colorFor(v):'var(--dim)'}">${okey?ORGANS[okey].name+' '+v+'%':''}</span></div><div class="cond-prog">${PROG[id]||''}</div></div>`;
+  }).join('');
+}
+
+let horizon=10;
+function renderForecast(){
+  if(!forecast) computeForecast();
+  const cps=[1,5,10,20];
+  document.getElementById('fc-years').innerHTML = cps.map(c=>{
+    const d=forecast[c].death;
+    const col=d>30?'var(--red)':d>12?'var(--yellow)':'var(--green)';
+    return `<div class="fc-y ${c===horizon?'sel':''}" data-h="${c}"><div class="fc-y-n">+${c}</div><div class="fc-y-r" style="color:${col}">†${d}%</div></div>`;
+  }).join('');
+  const F=forecast[horizon];
+  const items=Object.entries(F.dis).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  let rows=items.map(([id,p])=>{
+    const col=p>40?'var(--red)':p>20?'var(--yellow)':'var(--dim)';
+    return `<div class="fc-row"><span style="color:var(--dim)">${DISEASES[id]?.name||id}</span><span style="color:${col};font-weight:700">${p}%</span></div>`;
+  }).join('');
+  rows += `<div class="fc-row" style="margin-top:6px;padding-top:6px;border-top:1px solid var(--b1)"><span style="color:var(--red)">Смерть</span><span style="color:var(--red);font-weight:700">${F.death}%</span></div>`;
+  document.getElementById('fc-detail').innerHTML = `<div class="fc-d-lbl">риски за +${horizon} лет (из 1000 судеб)</div>${items.length?rows:'<div class="fc-stub">значимых рисков нет — здоровый сценарий</div>'+rows}`;
+}
+
+function set(id,v,c){ const e=document.getElementById(id); if(e){ e.textContent=v; if(c)e.style.color=c; } }
+
+// ════════════════════════════════════════════════
+// TABS / DRILL
+// ════════════════════════════════════════════════
+function renderTabBody(){
+  const body=document.getElementById('tab-body');
+  if(currentTab==='profile'){ body.innerHTML=profileHTML(); bindProfile(); return; }
+  if(currentTab==='ai'){ body.innerHTML=aiHTML(); return; }
+  const grpKey={subs:'subs',sport:'sport',food:'food'}[currentTab];
+  const cats=CATEGORIES[grpKey];
+  const st=drill[currentTab];
+  if(!st){
+    body.innerHTML=`<div class="cat-grid">${cats.map(c=>`<div class="cat-card" data-cat="${c.id}"><span class="cat-icon">${c.icon}</span><span class="cat-name">${c.name}</span><span class="cat-desc">${c.desc}</span></div>`).join('')}</div>`;
+  } else {
+    const cat=cats.find(c=>c.id===st); if(!cat){drill[currentTab]=null;return renderTabBody();}
+    body.innerHTML=`<div class="drill-header"><button class="back-btn" id="drill-back">← Назад</button><div class="drill-title">${cat.icon} ${cat.name}</div></div><div class="sub-grid">${cat.items.map(it=>`<div class="sub-item ${it.type}" data-item="${it.id}"><div class="si-icon">${it.icon}</div><div class="si-body"><div class="si-name">${it.name}</div><div class="si-mech">${it.mech.substring(0,70)}…</div><div class="si-tags">${(it.tags||[]).map(t=>`<span class="si-tag ${t.c}">${t.t}</span>`).join('')}</div></div></div>`).join('')}</div>`;
+  }
+}
+
+function habitRow(label, key, opts, p){
+  const lvl=(p.habits&&p.habits[key]!=null)?p.habits[key]:1;
+  return `<div style="margin-bottom:8px"><div style="font-size:8px;color:var(--dim);margin-bottom:4px">${label}</div><div class="chip-row" style="margin-bottom:0">${opts.map((o,i)=>`<div class="chip ${lvl===i?'active':''}" data-habit="${key}" data-lvl="${i}">${o}</div>`).join('')}</div></div>`;
+}
+function profileHTML(){
+  const p=S.profile;
+  return `<div class="prof-grid">
+    <div>
+      <div class="chip-row">
+        <div class="chip ${p.sex==='М'?'active':''}" data-sex="М">♂ Мужчина</div>
+        <div class="chip ${p.sex==='Ж'?'active':''}" data-sex="Ж">♀ Женщина</div>
+      </div>
+      <div class="sl-row"><div class="sl-label"><span>Возраст</span><span>${p.age} лет</span></div><input type="range" min="18" max="80" value="${p.age}" data-pf="age"></div>
+      <div class="sl-row"><div class="sl-label"><span>Вес</span><span>${p.weight} кг</span></div><input type="range" min="45" max="150" value="${p.weight}" data-pf="weight"></div>
+      <div class="sl-row"><div class="sl-label"><span>Рост</span><span>${p.height} см</span></div><input type="range" min="150" max="210" value="${p.height}" data-pf="height"></div>
+      <div class="sl-row"><div class="sl-label"><span>Сидячая работа</span><span>${p.sedentary} ч/день</span></div><input type="range" min="0" max="14" value="${p.sedentary}" data-pf="sedentary"></div>
+      <div class="sl-row"><div class="sl-label"><span>Сон</span><span>${p.sleep} ч</span></div><input type="range" min="3" max="11" value="${p.sleep}" data-pf="sleep"></div>
+      <div class="sl-row"><div class="sl-label"><span>Стресс</span><span>${p.stress}/10</span></div><input type="range" min="0" max="10" value="${p.stress}" data-pf="stress"></div>
+    </div>
+    <div>
+      <div style="font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin-bottom:7px">Место проживания</div>
+      <div class="chip-row">${Object.entries(LOCATIONS).map(([k,l])=>`<div class="chip ${p.location===k?'active':''}" data-loc="${k}">${l.name}</div>`).join('')}</div>
+      <div style="font-size:8px;color:var(--dim);margin:-6px 0 12px;line-height:1.5">${(()=>{const f=LOCATIONS[p.location].factors;const ks=Object.keys(f);return ks.length?ks.map(k=>FACTOR_LABELS[k]).join(' · '):'нейтральный фон';})()}</div>
+      <div style="font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin-bottom:7px">Хронические болезни</div>
+      <div class="chip-row">${Object.entries(PRECONDITIONS).map(([k,c])=>`<div class="chip cond ${p.conditions.includes(k)?'active':''}" data-cond="${k}">${c.name}</div>`).join('')}</div>
+      <div style="font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin-bottom:7px">Привычки · влияют на прогноз</div>
+      ${habitRow('Курение','smoking',['нет','умеренно','много'],p)}
+      ${habitRow('Алкоголь','alcohol',['нет','умеренно','много'],p)}
+      ${habitRow('Питание','diet',['плохое','среднее','хорошее'],p)}
+      ${habitRow('Активность','activity',['низкая','средняя','высокая'],p)}
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+        <button class="adv-btn" id="adv-year">📅 Прожить год</button>
+        <button class="adv-btn" id="adv-day" style="background:transparent">⏭ День</button>
+        <button class="reset-btn" id="reset-all">↺ Сброс</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function aiHTML(){
+  const cal = aiCalib ? `✓ откалибровано${aiCalib.note?' · '+aiCalib.note:''}` : 'базовая модель (не калибровано)';
+  return `<div class="ai-card" style="border-color:rgba(0,229,255,.2)">
+    <div class="ai-card-h" style="color:var(--cyan)"><span class="ai-dot"></span>Калибровка матрицы рисков</div>
+    <div style="font-size:9px;color:var(--dim);line-height:1.6;margin-bottom:9px">AI оценивает твой профиль и подстраивает риски болезней под человека. Множители применяются ДО прогона 1000 судеб.</div>
+    <button class="ai-btn" id="ai-calib-btn">⚡ Калибровать под профиль</button>
+    <div id="ai-calib-out" style="font-size:9px;color:var(--dim);margin-top:8px">${cal}</div>
+  </div>
+  <div class="ai-card" style="border-color:rgba(224,64,251,.2);margin-top:10px">
+    <div class="ai-card-h" style="color:var(--purple)"><span class="ai-dot" style="background:var(--purple)"></span>Словесный разбор</div>
+    <div style="font-size:9px;color:var(--dim);line-height:1.6;margin-bottom:9px">AI разбирает прогноз за +${horizon} лет: главная проблема и рекомендации.</div>
+    <button class="ai-btn" id="ai-analyze-btn" style="border-color:rgba(224,64,251,.3);color:var(--purple)">✦ Проанализировать прогноз</button>
+    <div id="ai-analyze-out" style="font-size:10px;color:var(--txt);line-height:1.7;margin-top:9px"></div>
+  </div>`;
+}
+
+// ── AI: вызовы через локальный прокси /ai ──
+const CALIB_SYS = `Ты — врач-эпидемиолог. По профилю человека оцени, насколько повышен или понижен годовой риск каждого заболевания относительно базовой модели. Верни СТРОГО JSON без markdown: {"diseaseMult": {"<id>": число}, "note": "одно короткое предложение по-русски"}. Множитель 1.0 = базовый риск, 1.5 = на 50% выше, 0.7 = на 30% ниже. Допустимый диапазон 0.3–3.0. Указывай только болезни с заметным отклонением. Доступные id: ${Object.keys(DISEASES).join(', ')}.`;
+const ANALYZE_SYS = `Ты — врач-физиолог. Краткий разбор на русском (4-6 предложений), без приветствий и воды. Выдели главную проблему жирным через **двойные звёздочки**, затем дай 1-2 конкретные рекомендации. Опирайся на профиль и прогноз.`;
+
+function profileSummary(){
+  const p=S.profile, h=p.habits||{};
+  const lev=['нет','умеренно','много'], dl=['плохое','среднее','хорошее'], al=['низкая','средняя','высокая'];
+  const orgs=Object.keys(ORGANS).map(k=>ORGANS[k].name+' '+Math.round(cur(S.organs[k]))+'%').join(', ');
+  const cond=[...new Set([...p.conditions,...(p.acquired||[])])].map(id=>(PRECONDITIONS[id]||DISEASES[id])?.name).filter(Boolean).join(', ')||'нет';
+  const fct=Object.keys(LOCATIONS[p.location].factors).map(k=>FACTOR_LABELS[k]).join('; ')||'нейтрально';
+  return `Пол ${p.sex}, возраст ${p.age}, вес ${p.weight}кг, рост ${p.height}см, ИМТ ${bmi(p).toFixed(1)}.
+Регион: ${LOCATIONS[p.location].name} (${fct}).
+Болезни (хрон. + нажитые): ${cond}.
+Привычки: курение ${lev[h.smoking||0]}, алкоголь ${lev[h.alcohol||0]}, питание ${dl[h.diet??1]}, активность ${al[h.activity??1]}.
+Сидячая работа ${p.sedentary}ч/день, сон ${p.sleep}ч, стресс ${p.stress}/10.
+Органы: ${orgs}.`;
+}
+
+async function aiCall(messages, json, max_tokens){
+  const res=await fetch('/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages,json,max_tokens})});
+  const j=await res.json().catch(()=>({error:'нет ответа'}));
+  if(!res.ok||j.error) throw new Error(j.error||('HTTP '+res.status));
+  return j;
+}
+const aiErrHTML = e => `<span style="color:var(--red)">${e.message||'ошибка'}</span><br><span style="font-size:8px;color:var(--dim)">Запусти прокси: <code style="color:var(--cyan)">node ai-proxy.js</code> и задай ключ в .env</span>`;
+function parseJSONloose(t){ try{ return JSON.parse(t.replace(/```json|```/g,'').trim()); }catch{ return null; } }
+const aiLoading = '<span class="ai-dot"></span><span class="ai-dot" style="animation-delay:.15s"></span><span class="ai-dot" style="animation-delay:.3s"></span>';
+
+async function aiCalibrate(){
+  const out=document.getElementById('ai-calib-out'); out.innerHTML=aiLoading;
+  try{
+    const r=await aiCall([{role:'system',content:CALIB_SYS},{role:'user',content:profileSummary()}], true, 500);
+    const j=parseJSONloose(r.text);
+    if(j && j.diseaseMult){
+      // оставляем только известные болезни, клампим
+      const clean={}; for(const [k,v] of Object.entries(j.diseaseMult)) if(DISEASES[k]) clean[k]=Math.max(0.3,Math.min(3,+v||1));
+      aiCalib={diseaseMult:clean, note:j.note||''};
+      invalidate(); save(); render();
+      out.innerHTML=`✓ откалибровано (${r.model})${j.note?' · '+j.note:''}`;
+    } else out.textContent='AI вернул не то, что ожидалось — попробуй ещё раз.';
+  }catch(e){ out.innerHTML=aiErrHTML(e); }
+}
+
+async function aiAnalyze(){
+  const out=document.getElementById('ai-analyze-out'); out.innerHTML=aiLoading;
+  if(!forecast) computeForecast();
+  const F=forecast[horizon];
+  const top=Object.entries(F.dis).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([id,p])=>(DISEASES[id]?.name||id)+' '+p+'%').join(', ')||'значимых нет';
+  const ctx=profileSummary()+`\n\nПрогноз за ${horizon} лет (1000 судеб): риск смерти ${F.death}%. Вероятности болезней: ${top}.`;
+  try{
+    const r=await aiCall([{role:'system',content:ANALYZE_SYS},{role:'user',content:ctx}], false, 500);
+    out.innerHTML=r.text.replace(/\*\*(.+?)\*\*/g,'<strong style="color:var(--purple)">$1</strong>').replace(/\n/g,'<br>');
+  }catch(e){ out.innerHTML=aiErrHTML(e); }
+}
+
+// ════════════════════════════════════════════════
+// EVENTS
+// ════════════════════════════════════════════════
+document.getElementById('tabs').addEventListener('click',e=>{
+  const t=e.target.closest('.tab'); if(!t) return;
+  currentTab=t.dataset.tab;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  renderTabBody();
+});
+document.getElementById('tab-body').addEventListener('click',e=>{
+  const cat=e.target.closest('[data-cat]');
+  if(cat){ drill[currentTab]=cat.dataset.cat; renderTabBody(); return; }
+  if(e.target.closest('#drill-back')){ drill[currentTab]=null; renderTabBody(); return; }
+  const it=e.target.closest('[data-item]');
+  if(it){ openDose(it.dataset.item); return; }
+});
+document.getElementById('tod-bar').addEventListener('click',e=>{
+  const b=e.target.closest('.tod-btn'); if(!b) return;
+  tod=b.dataset.tod;
+  document.querySelectorAll('.tod-btn').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+});
+document.querySelector('.body-svg').addEventListener('click',e=>{
+  const g=e.target.closest('[data-organ]'); if(!g) return;
+  organInfo(g.dataset.organ);
+});
+document.getElementById('fc-years').addEventListener('click',e=>{
+  const y=e.target.closest('[data-h]'); if(!y) return;
+  horizon=+y.dataset.h; renderForecast();
+});
+document.getElementById('organ-list').addEventListener('click',e=>{
+  const r=e.target.closest('[data-organ]'); if(r) organInfo(r.dataset.organ);
+});
+
+function bindProfile(){
+  const body=document.getElementById('tab-body');
+  body.querySelectorAll('[data-pf]').forEach(inp=>{
+    inp.addEventListener('input',()=>{ S.profile[inp.dataset.pf]=+inp.value; applyPreconditions(); save(); renderTabBody(); render(); });
+  });
+  body.querySelectorAll('[data-sex]').forEach(c=>c.addEventListener('click',()=>{S.profile.sex=c.dataset.sex;save();renderTabBody();}));
+  body.querySelectorAll('[data-loc]').forEach(c=>c.addEventListener('click',()=>{S.profile.location=c.dataset.loc;applyPreconditions();save();renderTabBody();render();}));
+  body.querySelectorAll('[data-cond]').forEach(c=>c.addEventListener('click',()=>{
+    const id=c.dataset.cond;
+    if(S.profile.conditions.includes(id)) S.profile.conditions=S.profile.conditions.filter(x=>x!==id);
+    else S.profile.conditions.push(id);
+    applyPreconditions(); save(); renderTabBody(); render();
+  }));
+  body.querySelectorAll('[data-habit]').forEach(c=>c.addEventListener('click',()=>{
+    if(!S.profile.habits) S.profile.habits={smoking:0,alcohol:0,diet:1,activity:1};
+    S.profile.habits[c.dataset.habit]=+c.dataset.lvl;
+    invalidate(); save(); renderTabBody(); render();
+  }));
+  body.querySelector('#adv-year')?.addEventListener('click',()=>{ stepLiveYear(); renderTabBody(); });
+  body.querySelector('#adv-day')?.addEventListener('click',advanceDay);
+  body.querySelector('#reset-all')?.addEventListener('click',()=>{ S=freshState(); applyPreconditions(); invalidate(); save(); renderTabBody(); render(); toast('Сброшено'); });
+}
+
+function organInfo(k){
+  const o=S.organs[k]; const v=Math.round(cur(o));
+  const st=v<50?'КРИТИЧНО':v<75?'повреждён':v<90?'умеренно':'норма';
+  const perm=o.perm>1?` · рубец ${Math.round(o.perm)}%`:'';
+  toast(`${ORGANS[k].name}: ${v}% · ${st}${perm}`);
+}
+
+// MODAL
+function openDose(id){
+  const item=findItem(id); if(!item) return;
+  currentSub=id;
+  document.getElementById('dm-icon').textContent=item.icon;
+  document.getElementById('dm-title').textContent=item.name;
+  document.getElementById('dm-mech').textContent=item.mech;
+  document.getElementById('dm-dose-lbl').textContent=item.unit;
+  const r=document.getElementById('dm-range'); r.max=item.max; r.value=1;
+  previewDose(1);
+  document.getElementById('modal').classList.add('open');
+}
+function previewDose(dose){
+  const item=findItem(currentSub); if(!item) return;
+  document.getElementById('dm-dose-val').textContent=dose+' '+item.unit;
+  const imp=calcImpact(item,+dose);
+  let rows='';
+  for(const [k,v] of Object.entries(imp.organs)){ const s=+v.toFixed(1); rows+=impRow(ORGANS[k].name,(s>0?'+':'')+s+'%',s>0?'var(--green)':'var(--red)'); }
+  for(const [k,v] of Object.entries(imp.systems)){ const s=+v.toFixed(1); rows+=impRow(SYSTEMS[k].name,(s>0?'+':'')+s+'%',s>0?'var(--green)':'var(--red)'); }
+  if(imp.vitals.pulse){ const s=Math.round(imp.vitals.pulse); rows+=impRow('Пульс',(s>0?'+':'')+s,s>0?'var(--red)':'var(--green)'); }
+  if(imp.vitals.oxy){ const s=+imp.vitals.oxy.toFixed(1); rows+=impRow('O₂',(s>0?'+':'')+s+'%',s>0?'var(--green)':'var(--red)'); }
+  if(imp.vitals.glucose){ const s=+imp.vitals.glucose.toFixed(1); rows+=impRow('Глюкоза','+'+s,'var(--yellow)'); }
+  if(imp.vitals.tox){ const s=+imp.vitals.tox.toFixed(2); rows+=impRow('Токсины','+'+s+' мг/дл','var(--red)'); }
+  if(!rows) rows=impRow('Нет прямого вреда','','var(--green)');
+  let warns='';
+  if(tod==='night') warns+=`<div class="impact-warn red">⚠ Ночь × 1.4 — хуже выводятся токсины</div>`;
+  const cm=condMultFor(item);
+  if(cm>1.3) warns+=`<div class="impact-warn yellow">⚠ Хроническая болезнь усиливает × ${cm.toFixed(1)}</div>`;
+  if((item.perm||(item.type==='harmful'?0.3:0))>0.5) warns+=`<div class="impact-warn red">⚠ Высокая доля НЕОБРАТИМОГО урона</div>`;
+  document.getElementById('dm-impact').innerHTML=rows+warns;
+}
+const impRow=(n,v,c)=>`<div class="impact-row"><span class="impact-organ">${n}</span><span class="impact-val" style="color:${c}">${v}</span></div>`;
+document.getElementById('dm-range').addEventListener('input',e=>previewDose(e.target.value));
+document.getElementById('btn-apply').addEventListener('click',()=>{ const item=findItem(currentSub); applyDose(item,+document.getElementById('dm-range').value); closeModal(); });
+document.getElementById('btn-cancel').addEventListener('click',closeModal);
+document.getElementById('modal').addEventListener('click',e=>{ if(e.target.id==='modal') closeModal(); });
+function closeModal(){ document.getElementById('modal').classList.remove('open'); }
+
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200); }
+
+// ════════════════════════════════════════════════
+// PERSIST
+// ════════════════════════════════════════════════
+function save(){ try{ localStorage.setItem('bodylab_v5',JSON.stringify(S)); }catch(e){} }
+function load(){ try{ const d=localStorage.getItem('bodylab_v5'); if(!d) return false; S=JSON.parse(d);
+  if(!S.profile.habits) S.profile.habits={smoking:0,alcohol:0,diet:1,activity:1};
+  if(!S.profile.acquired) S.profile.acquired=[];
+  for(const k in ORGANS){ if(!S.organs[k]) S.organs[k]={base:96,rev:0,perm:0,seed:0}; if(S.organs[k].seed==null)S.organs[k].seed=0; }
+  for(const k in SYSTEMS){ if(S.systems[k]==null) S.systems[k]=85; }
+  return true; }catch(e){ return false; } }
+
+// INIT
+if(!load()){ S=freshState(); applyPreconditions(); }
+renderTabBody();
+render();
+</script>
+</body>
+</html>
